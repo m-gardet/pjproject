@@ -45,6 +45,32 @@ pj_bool_t pjsip_include_allow_hdr_in_dlg = PJSIP_INCLUDE_ALLOW_HDR_IN_DLG;
 /* Contact header string */
 static const pj_str_t HCONTACT = { "Contact", 7 };
 
+static void dlg_update_contact_src(pjsip_dialog *dlg,
+                                   const pjsip_rx_data *rdata)
+{
+    pjsip_server_address_record *addr = &dlg->contact_src_addr;
+    pjsip_transport *transport = rdata->tp_info.transport;
+    pj_str_t name;
+
+    if (!pjsip_cfg()->endpt.contact_use_src_addr ||
+        (dlg->secure && !PJSIP_TRANSPORT_IS_SECURE(transport)))
+    {
+        return;
+    }
+
+    name = pj_str((char*)rdata->pkt_info.src_name);
+    if (transport->dir == PJSIP_TP_DIR_OUTGOING &&
+        transport->remote_name.host.slen)
+    {
+        name = transport->remote_name.host;
+    }
+    if (pj_strcmp(&addr->name, &name))
+        pj_strdup(dlg->pool, &addr->name, &name);
+    addr->type = (pjsip_transport_type_e)transport->key.type;
+    pj_sockaddr_cp(&addr->addr, &rdata->pkt_info.src_addr);
+    addr->addr_len = rdata->pkt_info.src_addr_len;
+}
+
 
 PJ_DEF(pj_bool_t) pjsip_method_creates_dialog(const pjsip_method *m)
 {
@@ -541,6 +567,8 @@ pj_status_t create_uas_dialog( pjsip_user_agent *ua,
      */
     dlg->secure = PJSIP_TRANSPORT_IS_SECURE(rdata->tp_info.transport) &&
                   PJSIP_URI_SCHEME_IS_SIPS(rdata->msg_info.msg->line.req.uri);
+
+    dlg_update_contact_src(dlg, rdata);
 
     /* Call-ID */
     dlg->call_id = (pjsip_cid_hdr*)
@@ -1422,6 +1450,19 @@ PJ_DEF(pj_status_t) pjsip_dlg_send_request( pjsip_dialog *dlg,
     /* Put this dialog in tdata's mod_data */
     tdata->mod_data[dlg->ua->id] = dlg;
 
+    if (pjsip_cfg()->endpt.contact_use_src_addr &&
+        dlg->contact_src_addr.addr_len != 0 &&
+        msg->line.req.method.id != PJSIP_CANCEL_METHOD &&
+        tdata->dest_info.addr.count == 0)
+    {
+        tdata->dest_info.addr.count = 1;
+        tdata->dest_info.cur_addr = 0;
+        tdata->dest_info.addr.entry[0] = dlg->contact_src_addr;
+        pj_strdup(tdata->pool, &tdata->dest_info.name,
+                  &dlg->contact_src_addr.name);
+        tdata->dest_info.addr.entry[0].name = tdata->dest_info.name;
+    }
+
     /* If via_addr is set, use this address for the Via header. */
     if (dlg->via_addr.host.slen > 0) {
         tdata->via_addr = dlg->via_addr;
@@ -2023,6 +2064,12 @@ void pjsip_dlg_on_rx_request( pjsip_dialog *dlg, pjsip_rx_data *rdata )
                   pjsip_msg_find_hdr(rdata->msg_info.msg, PJSIP_H_CONTACT,
                                      NULL);
         if (contact && contact->uri &&
+            rdata->msg_info.msg->line.req.method.id != PJSIP_ACK_METHOD &&
+            dlg_target_refresh_allowed(dlg, contact))
+        {
+            dlg_update_contact_src(dlg, rdata);
+        }
+        if (contact && contact->uri &&
             (dlg->remote.contact==NULL ||
              pjsip_uri_cmp(PJSIP_URI_IN_REQ_URI,
                            dlg->remote.contact->uri,
@@ -2385,6 +2432,20 @@ void pjsip_dlg_on_rx_response( pjsip_dialog *dlg, pjsip_rx_data *rdata )
         if (dlg->role==PJSIP_ROLE_UAC && !dlg->uac_has_2xx) {
             pjsip_dlg_update_remote_cap(dlg, rdata->msg_info.msg, PJ_FALSE);
             dlg->uac_has_2xx = PJ_TRUE;
+        }
+    }
+
+    if (res_code > 100 && res_code < 300 &&
+        pjsip_method_creates_dialog(&rdata->msg_info.cseq->method) &&
+        pj_strcmp(&dlg->remote.info->tag, &rdata->msg_info.to->tag) == 0)
+    {
+        pjsip_contact_hdr *contact = (pjsip_contact_hdr*)
+            pjsip_msg_find_hdr(rdata->msg_info.msg, PJSIP_H_CONTACT, NULL);
+
+        if (contact && contact->uri &&
+            dlg_target_refresh_allowed(dlg, contact))
+        {
+            dlg_update_contact_src(dlg, rdata);
         }
     }
 

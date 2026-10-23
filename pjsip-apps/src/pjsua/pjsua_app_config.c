@@ -277,6 +277,8 @@ static void usage(void)
     puts  ("                      Don't advertise \"norefersub\" in the Supported header");
     puts  ("  --use-compact-form  Minimize SIP message size");
     puts  ("  --no-force-lr       Allow strict-route to be used (i.e. do not force lr)");
+    puts  ("  --contact-use-src-addr Send dialog requests to Contact message source");
+    puts  ("                      Override next-hop routing, including Route headers");
     puts  ("  --accept-redirect=N Specify how to handle call redirect (3xx) response.");
     puts  ("                      0: reject, 1: follow automatically,");
     puts  ("                      2: follow + replace To header (default), 3: ask");
@@ -459,6 +461,7 @@ static pj_status_t parse_args(int argc, char *argv[],
            OPT_AUTO_UPDATE_NAT,OPT_USE_COMPACT_FORM,OPT_DIS_CODEC,
            OPT_CONTACT_REWRITE_METHOD,
            OPT_DISABLE_STUN, OPT_NO_FORCE_LR,
+           OPT_CONTACT_USE_SRC_ADDR,
            OPT_TIMER, OPT_TIMER_SE, OPT_TIMER_MIN_SE,
            OPT_VIDEO, OPT_TEXT, OPT_TEXT_RED, OPT_EXTRA_AUDIO,
            OPT_VCAPTURE_DEV, OPT_VRENDER_DEV, OPT_PLAY_AVI, OPT_AUTO_PLAY_AVI,
@@ -513,6 +516,7 @@ static pj_status_t parse_args(int argc, char *argv[],
         { "use-compact-form",   0, 0, OPT_USE_COMPACT_FORM},
         { "accept-redirect", 1, 0, OPT_ACCEPT_REDIRECT},
         { "no-force-lr",0, 0, OPT_NO_FORCE_LR},
+        { "contact-use-src-addr",0, 0, OPT_CONTACT_USE_SRC_ADDR},
         { "realm",      1, 0, OPT_REALM},
         { "username",   1, 0, OPT_USERNAME},
         { "password",   1, 0, OPT_PASSWORD},
@@ -824,6 +828,10 @@ static pj_status_t parse_args(int argc, char *argv[],
 
         case OPT_KEEP_CALL_ON_TSX_FAIL: /* keep-call-on-tsx-fail */
             cfg->keep_call_on_tsx_fail = PJ_TRUE;
+            break;
+
+        case OPT_CONTACT_USE_SRC_ADDR:
+            pjsip_cfg()->endpt.contact_use_src_addr = PJ_TRUE;
             break;
 
         case OPT_NO_TCP: /* no-tcp */
@@ -2848,6 +2856,10 @@ int write_settings(pjsua_app_config *config, char *buf, pj_size_t max)
 
     if (!config->cfg.force_lr) {
         cfg_add(&cfg, max, "--no-force-lr\n");
+    }
+
+    if (pjsip_cfg()->endpt.contact_use_src_addr) {
+        cfg_add(&cfg, max, "--contact-use-src-addr\n");
     }
 
     cfg_add(&cfg, max, "\n#\n# Buddies:\n#\n");
