@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2008-2011 Teluu Inc. (http://www.teluu.com)
+ * Copyright (C) 2008-2026 Teluu Inc. (http://www.teluu.com)
  * Copyright (C) 2003-2008 Benny Prijono <benny@prijono.org>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -41,7 +41,8 @@ pjsip_cfg_t pjsip_sip_cfg_var =
        PJSIP_ACCEPT_MULTIPLE_SDP_ANSWERS,
        0,
        PJSIP_SERVER_FAILOVER,
-       PJSIP_FAILED_SERVER_TIMEOUT
+             PJSIP_FAILED_SERVER_TIMEOUT,
+             PJ_FALSE
     },
 
     /* Transaction settings */

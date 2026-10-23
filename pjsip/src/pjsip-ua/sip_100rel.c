@@ -358,6 +358,27 @@ PJ_DEF(pj_status_t) pjsip_100rel_create_prack( pjsip_inv_session *inv,
     rack_hdr = pjsip_generic_string_hdr_create(tdata->pool, &RACK, &rack);
     pjsip_msg_add_hdr(tdata->msg, (pjsip_hdr*) rack_hdr);
 
+    if (pjsip_cfg()->endpt.contact_use_src_addr &&
+        (!inv->dlg->secure ||
+         PJSIP_TRANSPORT_IS_SECURE(rdata->tp_info.transport)))
+    {
+        pjsip_server_address_record *addr = &tdata->dest_info.addr.entry[0];
+
+        tdata->dest_info.addr.count = 1;
+        tdata->dest_info.cur_addr = 0;
+        addr->type = (pjsip_transport_type_e)
+                     rdata->tp_info.transport->key.type;
+        pj_sockaddr_cp(&addr->addr, &rdata->pkt_info.src_addr);
+        addr->addr_len = rdata->pkt_info.src_addr_len;
+        pj_strdup2(tdata->pool, &tdata->dest_info.name,
+                   rdata->pkt_info.src_name);
+        if (rdata->tp_info.transport->remote_name.host.slen) {
+            pj_strdup(tdata->pool, &tdata->dest_info.name,
+                      &rdata->tp_info.transport->remote_name.host);
+        }
+        addr->name = tdata->dest_info.name;
+    }
+
     /* Done */
     *p_tdata = tdata;
 

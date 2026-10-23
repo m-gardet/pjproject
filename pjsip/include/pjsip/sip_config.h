@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2008-2011 Teluu Inc. (http://www.teluu.com)
+ * Copyright (C) 2008-2026 Teluu Inc. (http://www.teluu.com)
  * Copyright (C) 2003-2008 Benny Prijono <benny@prijono.org>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -210,6 +210,17 @@ typedef struct pjsip_cfg_t
          * Default is PJSIP_FAILED_SERVER_TIMEOUT.
          */
         unsigned failed_server_timeout;
+
+        /**
+         * Send in-dialog requests to the source IP, port, and transport of
+         * the message establishing or refreshing the remote Contact.
+         * This overrides next-hop routing, including Route headers, without
+         * rewriting SIP URIs. Initial outgoing requests and CANCEL are not
+         * affected. Secure dialogs never learn an insecure source transport.
+         *
+         * Default is PJ_FALSE.
+         */
+        pj_bool_t contact_use_src_addr;
 
     } endpt;
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2008-2011 Teluu Inc. (http://www.teluu.com)
+ * Copyright (C) 2008-2026 Teluu Inc. (http://www.teluu.com)
  * Copyright (C) 2003-2008 Benny Prijono <benny@prijono.org>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -167,6 +167,9 @@ struct pjsip_dialog
     pjsip_auth_clt_sess             auth_sess;  /**< Client auth session.   */
     pj_str_t            initial_dest;/**< Initial destination host (used for
                                           verifying remote TLS cert).       */
+
+    /** Source of the remote Contact, used with contact_use_src_addr. */
+    pjsip_server_address_record contact_src_addr;
 
     /** Session counter. */
     int                 sess_count; /**< Number of sessions.                */
